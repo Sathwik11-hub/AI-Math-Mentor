@@ -7,10 +7,15 @@ from pathlib import Path
 from typing import List, Dict, Optional
 import json
 
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
-from langchain.docstore.document import Document
+
+try:
+    from langchain.text_splitter import RecursiveCharacterTextSplitter
+    from langchain.docstore.document import Document
+except ImportError:
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+    from langchain_core.documents import Document
 
 from utils.logger import setup_logger
 from utils.config import Config
