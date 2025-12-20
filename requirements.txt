@@ -1,0 +1,33 @@
+# Core Dependencies
+streamlit>=1.28.0
+python-dotenv>=1.0.0
+
+# AI/ML Libraries
+openai>=1.0.0
+langchain>=0.1.0
+langchain-openai>=0.0.5
+langchain-community>=0.0.20
+
+# Multimodal Processing
+easyocr>=1.7.0
+openai-whisper>=20231117
+Pillow>=10.0.0
+soundfile>=0.12.1
+
+# Math and Computation
+sympy>=1.12
+numpy>=1.24.0
+scipy>=1.11.0
+
+# Vector Store and RAG
+faiss-cpu>=1.7.4
+chromadb>=0.4.22
+sentence-transformers>=2.2.2
+
+# Data Storage and Processing
+pandas>=2.0.0
+
+# Utilities
+pydantic>=2.0.0
+tqdm>=4.66.0
+requests>=2.31.0
