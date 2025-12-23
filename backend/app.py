@@ -1,11 +1,12 @@
 """
 Streamlit UI for AI Math Mentor
-Main application interface
+Main application interface with User API Key Input
 """
 import streamlit as st
 from datetime import datetime
 import os
 from pathlib import Path
+import re
 
 # Add project root to path
 import sys
@@ -49,8 +50,172 @@ st.markdown("""
         color: red;
         font-weight: bold;
     }
+    /* API Key Configuration Box */
+    .api-key-box {
+        background-color: #FFFFFF !important;
+        border: 3px solid #4CAF50;
+        border-radius: 12px;
+        padding: 25px;
+        margin: 25px 0;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .api-key-header {
+        color: #1a1a1a !important;
+        font-size: 28px;
+        font-weight: bold;
+        margin-bottom: 15px;
+        text-shadow: none;
+    }
+    .api-instructions {
+        background-color: #FFFFFF !important;
+        color: #1a1a1a !important;
+        border: 2px solid #2196F3;
+        border-left: 6px solid #2196F3;
+        padding: 20px;
+        margin: 15px 0;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+    .api-instructions b {
+        color: #000000 !important;
+        font-weight: 700;
+    }
+    .api-instructions ul {
+        color: #1a1a1a !important;
+        margin-left: 20px;
+    }
+    .api-instructions li {
+        color: #1a1a1a !important;
+        margin: 8px 0;
+    }
+    /* Force dark text in all API sections */
+    .api-key-box * {
+        color: #1a1a1a !important;
+    }
+    .api-instructions * {
+        color: #1a1a1a !important;
+    }
+    /* Streamlit input labels in API section */
+    div[data-testid="stVerticalBlock"] > div:has(.api-key-box) label {
+        color: #1a1a1a !important;
+        font-weight: 600;
+    }
 </style>
 """, unsafe_allow_html=True)
+
+
+def validate_api_key(api_key: str, provider: str) -> tuple[bool, str]:
+    """
+    Validate API key format
+    
+    Args:
+        api_key: The API key string
+        provider: 'gemini' or 'openai'
+        
+    Returns:
+        Tuple of (is_valid, error_message)
+    """
+    if not api_key or api_key.strip() == "":
+        return False, "API key cannot be empty"
+    
+    api_key = api_key.strip()
+    
+    if provider == "gemini":
+        # Gemini API keys start with 'AIzaSy' and are 39 characters long
+        if not api_key.startswith("AIzaSy"):
+            return False, "Gemini API key should start with 'AIzaSy'"
+        if len(api_key) != 39:
+            return False, f"Gemini API key should be 39 characters long (yours is {len(api_key)})"
+        if not re.match(r'^AIzaSy[A-Za-z0-9_-]{33}$', api_key):
+            return False, "Invalid Gemini API key format"
+            
+    elif provider == "openai":
+        # OpenAI API keys start with 'sk-' and are typically 51 characters
+        if not api_key.startswith("sk-"):
+            return False, "OpenAI API key should start with 'sk-'"
+        if len(api_key) < 40:
+            return False, "OpenAI API key seems too short"
+        if not re.match(r'^sk-[A-Za-z0-9]{48}$', api_key):
+            return False, "Invalid OpenAI API key format"
+    
+    return True, ""
+
+
+def render_api_key_input():
+    """
+    Render the API key input section
+    Returns True if valid API key is provided, False otherwise
+    """
+    st.markdown('<div class="api-key-box">', unsafe_allow_html=True)
+    st.markdown('<p class="api-key-header">🔑 API Key Configuration</p>', unsafe_allow_html=True)
+    
+    # Instructions
+    st.markdown("""
+    <div class="api-instructions">
+    <b>⚠️ IMPORTANT: API Key Required</b><br>
+    This application requires a valid API key to function. Each user must provide their own API key.
+    <br><br>
+    <b>Supported Providers:</b>
+    <ul>
+        <li><b>Google Gemini</b> (Recommended) - Free tier: 20 requests/day</li>
+        <li><b>OpenAI</b> - Requires paid account</li>
+    </ul>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    # Provider selection
+    col1, col2 = st.columns([1, 2])
+    
+    with col1:
+        provider = st.selectbox(
+            "Select AI Provider",
+            options=["gemini", "openai"],
+            format_func=lambda x: "Google Gemini" if x == "gemini" else "OpenAI",
+            help="Choose which AI provider you want to use"
+        )
+    
+    with col2:
+        if provider == "gemini":
+            st.info("💡 Get your free Gemini API key at: https://aistudio.google.com/apikey")
+        else:
+            st.info("💡 Get your OpenAI API key at: https://platform.openai.com/api-keys")
+    
+    # API Key input
+    api_key = st.text_input(
+        f"Enter your {provider.upper()} API Key",
+        type="password",
+        placeholder=f"Paste your {provider.upper()} API key here...",
+        help=f"Your {provider.upper()} API key will be used for this session only and not stored permanently",
+        key="user_api_key_input"
+    )
+    
+    # Validation and confirmation
+    if api_key:
+        is_valid, error_message = validate_api_key(api_key, provider)
+        
+        if is_valid:
+            st.success(f"✅ Valid {provider.upper()} API key detected!")
+            
+            # Show key preview (first 8 and last 4 characters)
+            key_preview = f"{api_key[:8]}...{api_key[-4:]}"
+            st.caption(f"Key preview: `{key_preview}`")
+            
+            # Store in session state
+            st.session_state.user_api_key = api_key
+            st.session_state.api_provider = provider
+            st.session_state.api_key_validated = True
+            
+            st.markdown('</div>', unsafe_allow_html=True)
+            return True
+        else:
+            st.error(f"❌ {error_message}")
+            st.session_state.api_key_validated = False
+    else:
+        st.warning("⚠️ Please enter your API key to continue")
+        st.session_state.api_key_validated = False
+    
+    st.markdown('</div>', unsafe_allow_html=True)
+    return False
 
 
 def initialize_session_state():
@@ -65,12 +230,39 @@ def initialize_session_state():
         st.session_state.interaction_id = None
     if 'extracted_text' not in st.session_state:
         st.session_state.extracted_text = ""
+    if 'user_api_key' not in st.session_state:
+        st.session_state.user_api_key = None
+    if 'api_provider' not in st.session_state:
+        st.session_state.api_provider = None
+    if 'api_key_validated' not in st.session_state:
+        st.session_state.api_key_validated = False
+        st.session_state.initialized = False
+    if 'current_result' not in st.session_state:
+        st.session_state.current_result = None
+    if 'interaction_id' not in st.session_state:
+        st.session_state.interaction_id = None
+    if 'extracted_text' not in st.session_state:
+        st.session_state.extracted_text = ""
 
 
 def initialize_system():
-    """Initialize the math mentor system"""
+    """Initialize the math mentor system with user's API key"""
     try:
-        with st.spinner("Initializing AI Math Mentor..."):
+        with st.spinner("Initializing AI Math Mentor with your API key..."):
+            # Override Config with user's API key
+            if st.session_state.user_api_key:
+                os.environ['GEMINI_API_KEY'] = st.session_state.user_api_key
+                Config.GEMINI_API_KEY = st.session_state.user_api_key
+                
+                # Set model based on provider
+                if st.session_state.api_provider == "gemini":
+                    Config.GEMINI_MODEL = "models/gemini-2.5-flash"
+                    st.info(f"🤖 Using Google Gemini: {Config.GEMINI_MODEL}")
+                elif st.session_state.api_provider == "openai":
+                    # For OpenAI integration (future implementation)
+                    st.warning("⚠️ OpenAI support coming soon! Using Gemini for now.")
+                    Config.GEMINI_MODEL = "models/gemini-2.5-flash"
+            
             # Validate config
             Config.validate()
             
@@ -82,12 +274,22 @@ def initialize_system():
             
             st.session_state.orchestrator = orchestrator
             st.session_state.initialized = True
-            st.success("✅ System initialized successfully!")
+            st.success("✅ System initialized successfully with your API key!")
             
     except Exception as e:
         st.error(f"❌ Failed to initialize system: {str(e)}")
         logger.error(f"Initialization error: {e}")
-        st.info("💡 Make sure you have set OPENAI_API_KEY in your .env file")
+        
+        # Check if it's an API key issue
+        if "API key" in str(e) or "authentication" in str(e).lower():
+            st.error("� There seems to be an issue with your API key. Please check:")
+            st.markdown("""
+            - Ensure the API key is correct and complete
+            - Verify the API key is active and has quota available
+            - Check if the API key has the necessary permissions
+            """)
+        else:
+            st.info("💡 If the error persists, try refreshing the page and entering your API key again")
 
 
 def display_confidence(confidence: float) -> str:
@@ -107,9 +309,46 @@ def main():
     
     initialize_session_state()
     
+    # ========================================
+    # STEP 1: API KEY INPUT (REQUIRED FIRST)
+    # ========================================
+    st.markdown("---")
+    has_valid_api_key = render_api_key_input()
+    st.markdown("---")
+    
+    # Block further interaction until API key is provided
+    if not has_valid_api_key:
+        st.warning("⚠️ **Please provide a valid API key above to continue**")
+        st.info("""
+        **Why do I need an API key?**
+        
+        This application uses AI models from Google Gemini or OpenAI to solve mathematical problems.
+        Each user must provide their own API key to:
+        
+        - ✅ Ensure fair usage and quota management
+        - ✅ Maintain security and privacy
+        - ✅ Allow personalized access to AI services
+        - ✅ Track your own usage and costs
+        
+        **How to get an API key:**
+        1. **Google Gemini** (Free): Visit https://aistudio.google.com/apikey
+        2. **OpenAI** (Paid): Visit https://platform.openai.com/api-keys
+        """)
+        st.stop()  # Stop execution until API key is provided
+    
+    # ========================================
+    # STEP 2: SYSTEM INITIALIZATION
+    # ========================================
     # Sidebar
     with st.sidebar:
         st.header("⚙️ System Controls")
+        
+        # Show API key status
+        st.success(f"🔑 API Key: {st.session_state.api_provider.upper()}")
+        key_preview = f"{st.session_state.user_api_key[:8]}...{st.session_state.user_api_key[-4:]}"
+        st.caption(f"Key: `{key_preview}`")
+        
+        st.divider()
         
         if not st.session_state.initialized:
             if st.button("🚀 Initialize System", type="primary"):
@@ -144,12 +383,27 @@ def main():
         - Linear Algebra
         """)
     
-    # Check if system is initialized
+    # ========================================
+    # STEP 3: CHECK SYSTEM INITIALIZATION
+    # ========================================
     if not st.session_state.initialized:
-        st.warning("⚠️ Please initialize the system using the sidebar button")
-        st.info("💡 Make sure you have created a `.env` file with your `OPENAI_API_KEY`")
+        st.info("👈 **Please click 'Initialize System' in the sidebar to begin**")
+        st.markdown("""
+        ### Getting Started:
+        1. ✅ Your API key has been validated
+        2. 👈 Click **"Initialize System"** in the sidebar
+        3. 🚀 Start solving math problems!
+        
+        The system will:
+        - Load the RAG knowledge base
+        - Initialize all AI agents
+        - Prepare the multimodal input handlers
+        """)
         return
     
+    # ========================================
+    # STEP 4: PROBLEM SOLVING INTERFACE
+    # ========================================
     # Main content
     tab1, tab2, tab3 = st.tabs(["📝 Solve Problem", "📊 Execution Trace", "💬 Feedback"])
     
@@ -180,7 +434,7 @@ def main():
             )
             
             if uploaded_file is not None:
-                st.image(uploaded_file, caption="Uploaded Image", use_column_width=True)
+                st.image(uploaded_file, caption="Uploaded Image", width="stretch")
                 
                 if st.button("🔍 Extract Text from Image"):
                     with st.spinner("Processing image with OCR..."):
@@ -216,6 +470,8 @@ def main():
                 
                 if st.button("🎧 Transcribe Audio"):
                     with st.spinner("Transcribing audio with Whisper..."):
+                        # Reset file pointer before reading
+                        audio_file.seek(0)
                         # Save audio temporarily
                         temp_path = f"/tmp/{audio_file.name}"
                         with open(temp_path, "wb") as f:
@@ -227,12 +483,25 @@ def main():
                         
                         st.session_state.extracted_text = result.get("transcript", "")
                         confidence = result.get("confidence", 0.0)
+                        message = result.get("message", "")
                         
                         st.markdown(f"**ASR Confidence:** {display_confidence(confidence)}", 
                                   unsafe_allow_html=True)
                         
                         if result.get("needs_hitl"):
-                            st.warning("⚠️ Low confidence detected. Please review and edit the transcript.")
+                            if "ffmpeg" in message:
+                                st.error(f"❌ {message}")
+                                st.info("""
+                                **To fix this issue:**
+                                1. Install Homebrew (if not installed): 
+                                   `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"`
+                                2. Install ffmpeg: `brew install ffmpeg`
+                                3. Restart the app
+                                
+                                See `INSTALL_FFMPEG.md` for more details.
+                                """)
+                            else:
+                                st.warning("⚠️ Low confidence detected. Please review and edit the transcript.")
                         
                         # Clean up temp file
                         os.remove(temp_path)
@@ -263,6 +532,26 @@ def main():
             if result.get("status") == "needs_clarification":
                 st.warning("⚠️ The problem needs clarification")
                 st.json(result.get("parsed_problem"))
+            
+            elif result.get("status") == "quota_exceeded":
+                st.error("⚠️ API Quota Exceeded")
+                st.markdown(result.get("message", ""))
+                
+                # Show helpful tips
+                with st.expander("💡 What can I do?"):
+                    st.markdown("""
+                    **Free Tier Limits:**
+                    - 20 requests per day for Gemini 2.5 Flash
+                    - Quota resets automatically every 24 hours
+                    
+                    **Quick Solutions:**
+                    1. **Wait**: Quota resets automatically
+                    2. **Get a new API key**: https://aistudio.google.com/apikey
+                    3. **Upgrade**: Consider a paid plan for higher limits
+                    
+                    **Check Usage:**
+                    - Monitor at: https://ai.dev/usage?tab=rate-limit
+                    """)
                 
             elif result.get("status") == "error":
                 st.error(f"❌ Error: {result.get('message')}")

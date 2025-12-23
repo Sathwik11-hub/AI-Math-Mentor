@@ -11,10 +11,11 @@ load_dotenv()
 class Config:
     """Configuration class for AI Math Mentor"""
     
-    # OpenAI Configuration
-    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-    OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4")
-    EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-ada-002")
+    # Gemini / LLM Configuration
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+    # Default to gemini-2.0-flash (latest fast model) with models/ prefix
+    GEMINI_MODEL = os.getenv("GEMINI_MODEL", "models/gemini-2.0-flash")
+    EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-004")
     
     # Confidence Thresholds
     OCR_CONFIDENCE_THRESHOLD = float(os.getenv("OCR_CONFIDENCE_THRESHOLD", "0.7"))
@@ -44,8 +45,8 @@ class Config:
     @classmethod
     def validate(cls):
         """Validate configuration"""
-        if not cls.OPENAI_API_KEY:
-            raise ValueError("OPENAI_API_KEY is required. Please set it in .env file")
+        if not cls.GEMINI_API_KEY:
+            raise ValueError("GEMINI_API_KEY is required. Please set it in .env file")
         
         # Create necessary directories
         cls.MEMORY_DIR.mkdir(exist_ok=True)

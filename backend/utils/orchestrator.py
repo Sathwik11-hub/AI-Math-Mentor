@@ -295,7 +295,28 @@ class MathMentorOrchestrator:
             return result
             
         except Exception as e:
+            error_msg = str(e)
             logger.error(f"Error in solve_problem: {e}")
+            
+            # Check if it's a quota error
+            if "quota" in error_msg.lower() or "429" in error_msg:
+                self.execution_trace.append({
+                    "stage": "Error",
+                    "status": "quota_exceeded",
+                    "error": "API quota exceeded"
+                })
+                return {
+                    "status": "quota_exceeded",
+                    "message": "⚠️ **API Quota Exceeded**\n\n"
+                              "You've reached the free tier limit of **20 requests per day**.\n\n"
+                              "**Options:**\n"
+                              "1. ⏰ Wait for the quota to reset (quotas reset automatically)\n"
+                              "2. 🔑 Get a new API key at https://aistudio.google.com/apikey\n"
+                              "3. 💳 Upgrade to a paid plan at https://ai.google.dev/pricing\n\n"
+                              "**Monitor your usage:** https://ai.dev/usage?tab=rate-limit",
+                    "execution_trace": self.execution_trace
+                }
+            
             self.execution_trace.append({
                 "stage": "Error",
                 "status": "failed",

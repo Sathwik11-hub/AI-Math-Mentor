@@ -148,7 +148,7 @@ if __name__ == "__main__":
     if all_passed:
         print("\n🎉 All validation tests passed!")
         print("\nNext steps:")
-        print("1. Set OPENAI_API_KEY in .env file")
+        print("1. Set GEMINI_API_KEY in .env file")
         print("2. Run: streamlit run app.py")
         sys.exit(0)
     else:
