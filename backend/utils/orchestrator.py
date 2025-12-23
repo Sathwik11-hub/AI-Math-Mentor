@@ -146,14 +146,15 @@ class MathMentorOrchestrator:
                 "output": parsed_problem
             })
             
-            # Check if clarification needed
-            if parsed_problem.get("needs_clarification", False):
-                return {
-                    "status": "needs_clarification",
-                    "parsed_problem": parsed_problem,
-                    "message": "Problem is ambiguous and needs clarification",
-                    "execution_trace": self.execution_trace
-                }
+            # Note if clarification is flagged (but continue solving)
+            needs_clarification_flag = parsed_problem.get("needs_clarification", False)
+            if needs_clarification_flag:
+                logger.warning("Problem flagged for clarification, but will attempt to solve anyway")
+                self.execution_trace.append({
+                    "stage": "Clarification Notice",
+                    "status": "warning",
+                    "message": "Problem may be ambiguous but proceeding with best interpretation"
+                })
             
             # Stage 2: Check for similar past problems
             logger.info("Stage 2: Checking memory for similar problems...")
@@ -288,7 +289,8 @@ class MathMentorOrchestrator:
                 ],
                 "similar_problems": similar_problems,
                 "execution_trace": self.execution_trace,
-                "requires_hitl": verification.get("requires_hitl", False)
+                "requires_hitl": verification.get("requires_hitl", False),
+                "needs_clarification": needs_clarification_flag  # Add clarification flag
             }
             
             logger.info(f"Problem solved successfully. Interaction ID: {interaction_id}")

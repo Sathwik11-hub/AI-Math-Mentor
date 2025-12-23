@@ -529,11 +529,9 @@ def main():
         if st.session_state.current_result:
             result = st.session_state.current_result
             
-            if result.get("status") == "needs_clarification":
-                st.warning("⚠️ The problem needs clarification")
-                st.json(result.get("parsed_problem"))
-            
-            elif result.get("status") == "quota_exceeded":
+            # Remove the needs_clarification blocking - it's now just a warning
+            # Keep quota and error handling
+            if result.get("status") == "quota_exceeded":
                 st.error("⚠️ API Quota Exceeded")
                 st.markdown(result.get("message", ""))
                 
@@ -558,6 +556,11 @@ def main():
                 
             elif result.get("status") == "success":
                 st.success("✅ Problem solved!")
+                
+                # Display clarification warning if flagged
+                if result.get("needs_clarification"):
+                    st.warning("⚠️ **Note:** The problem statement may have been ambiguous or incomplete. "
+                             "The solution below is based on the best interpretation of the input.")
                 
                 # Display HITL warning if needed
                 if result.get("requires_hitl"):
